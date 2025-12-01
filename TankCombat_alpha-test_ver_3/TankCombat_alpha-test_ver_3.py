@@ -1,11 +1,13 @@
 #TankCombat_alpha-test_ver_3. Made by PYS3301man.
 #제작기간 = 시작: 2025-11-01 | 종료: 2025-1
 #이전 버젼(TankCombat_alpha-test_ver_2)를 계승한 코드.
-from TCatv3_InfoList import *
-import time, random, pygame, sys, os
-
-pygame.init()
-pygame.mixer.init()
+try:
+    from TCatv3_InfoList import *
+    import time, random, pygame, sys, os
+    pygame.init()
+    pygame.mixer.init()
+except:
+    pass
 
 # VLs 폴더 다운로드 필요. [위치]/VLs/[국가] 폴더의 위치를 적은 후 주석을 지우십시오. 예: "C:/VLs/USA"
 try:
@@ -237,11 +239,12 @@ def Slt_Dfclt():
     print("난이도 선택:")
     print(f'''선택된 맵: {MAP_L[SltdMapIdx][0]} | 상황: {MAP_L[SltdMapIdx][1]}
 선택 가능한 난이도:''')
-    for i in range(MAP_L[SltdMapIdx][3], MAP_L[SltdMapIdx][4]):
+    for i in range(MAP_L[SltdMapIdx][3], MAP_L[SltdMapIdx][4] + 1):
         count += 1
         CanDfc_List.append(DFC_L[i])
         print(f"{count}. {DFC_L[i][0]}")
         print(f"| 적의 수: {DFC_L[i][1]}대 | 적의 명중률: {DFC_L[i][2]}% | 보상 배율: {DFC_L[i][3]}배")
+    print(CanDfc_List)
     Check = int(input("번호를 입력하세요: "))
     if 1 <= Check <= len(CanDfc_List):
         for j in range(len(DFC_L)):
@@ -439,7 +442,7 @@ def Main_Menu():
         return Main_Menu()
 
 
-#Main_Menu()
+Main_Menu()
 
 pygame.init()
 Wid_W = 1600
