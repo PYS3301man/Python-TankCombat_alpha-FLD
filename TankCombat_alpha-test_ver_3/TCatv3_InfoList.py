@@ -93,7 +93,7 @@ NrmdFild      = [           'Normandy Fields:노르망디 들판',       'Unstab
 Btle_Aras     = [           'Battle of Arras:아라스 전차전',        'High-Risk:고위험', 1,  3,  6] # 4
 LnvdPlnd      = [               'Invade Poland:폴란드 침공',        'High-Risk:고위험', 2,  4,  7] # 5
 Sige_Stlg     = ['Siege of Stalingrad: 스탈린그라드 포위전', 'EMGC-situation:비상상황', 2,  5,  8] # 6
-BrlnAtck      = [               'Berlin Attack:베를린 공습','Before-Collapse:붕괴직전', 2,  6, 10] # 7
+BrlnAtck      = [               'Berlin Attack:베를린 공습','Before-Collapse:붕괴직전', 3,  6, 10] # 7
 Btle_Chch     = [            'Battle of CHUNCHEON:춘천대첩', 'EMGC-situation:비상상황', 3,  ]
 
 
@@ -101,3 +101,4 @@ MAP_L = [AbndFctr, ArdnBtfd, NO_AfrcFrnt, NrmdFild, Btle_Aras, LnvdPlnd, Sige_St
 
 #이 코드를 보고 있는 파이썬 입문자분들은 이런 노가다 짓 하지마세요
     
+
