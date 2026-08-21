@@ -1,0 +1,747 @@
+#TankCombat_alpha-test_ver_3. Made by PYS3301man.
+#제작기간 = 시작: 2025-11-01 | 종료: 2026-03-25
+#이전 버전(TankCombat_alpha-test_ver_2)를 계승한 코드.
+from TCatvF3_InfoList import *
+import time, random, pygame, sys, os
+pygame.init()
+pygame.mixer.init()
+
+#해당 코드는 ChatGPT의 도움과 실제 역사 기반의 위키, 문서 등의 도움을 받았습니다.
+
+Time_list = ["WW2_E","WW2_M", "WW2_L", "K_W", "VN_W", "C_W", "IRQ_W", "M_W", "F_W"]
+
+#시대별 전차 리스트 (미사용:참조용)
+#미국(+ 남베트남, 남한)
+#example_example_List =       [''                    , ''                   , ''                   , ''                  ] #예시
+WW2_Early_USAm_Tank_List =    ['M3A1_Stuart'         , 'M4A1_Sherman'       , 'M3_Lee'             , 'M10_GMC'           ] #WW2 초기
+WW2_Middle_USAm_Tank_List =   ['M18_GMC'             , 'M26_Pershing'       , 'M4A3E2_(76)_W_Jumbo', 'M36B2'             ] #WW2 중기
+WW2_Late_USAm_Tank_List =     ['M41A1_WalkerBulldog' , 'M46_Patton'         , 'T34'                , 'M56_Scorpion'      ] #WW2 후기
+Korean_War_USAm_Tank_List =   ['M41A1_WalkerBulldog' , 'M46_Patton'         , 'M4A3E8_(76)_W_HVSS' , 'M36B2'             ] #6.25 전쟁
+Vietnam_War_USAm_Tank_List =  ['M551_Sheridan'       , 'M48_Patton'         , 'M60_SuperPatton'    , 'M50_Ontos'         ] #베트남 전쟁
+Cold_War_USAm_Tank_List =     ['M551_Sheridan'       , 'MBT-70'             , 'M103'               , 'M50_Ontos'         ] #냉전
+Iraq_War_USAm_Tank_List =     ['M2_Bradley'          , 'M1A1'               , 'M1A1HA'             , 'M103'              ] #이라크 전쟁
+Modern_War_USAm_Tank_List =   ['M3_Bradley'          , 'M1A2_SEP_v2'        , 'M1A2_SEP_v3'        , 'M1128_MGS'         ] #현대
+
+#인덱싱
+IdxTnk = 0
+call = 0
+SltdCntrIdx = 0
+SltdTimeIdx = 0
+SltdTankIdx = 0
+SltdTank = 0
+SltdMapIdx = 0
+SltdDfcltIdx = 0
+#함수 인덱싱
+Exd_MaMe, Exd_SlCn, Exd_SlTi, Exd_SlTk, Exd_SwTk, Exd_SlMp, Exd_SlDf, Exd_SlFn = 0, 0, 0, 0, 0, 0, 0, 0
+#선택된 전차 인덱싱
+Cnt = 0
+Tim = 0
+Tnk = 0
+Map = 0
+Dfc = 0
+#자원 (war bond:전시 채권)
+WB = 0
+TRM = 1.0 #합계 보상 배율(Total reward multiplier)
+
+#딜레이 카운트
+SltMap_DC = 0
+
+#일부 CGPT 사용됨
+class Tanks:
+    def __init__(self, Name, Class, HulInfo, MG_I_List, SG_I_List, RsiBm):
+        self.Name = Name
+        self.Class = Class
+        self.HulInfo = HulInfo
+        self.MG_I_List = MG_I_List
+        self.SG_I_List = SG_I_List
+        self.RsiBm = RsiBm
+
+    def __str__(self):
+        return f'{self.Name}, {self.Class}, {self.HulInfo}, {self.MG_I_List}, {self.SG_I_List}, {self.RsiBm}'
+
+    def ReturnTankInfo(self):
+        TankInfo = [self.Name, self.HulInfo, self.MG_I_List, self.SG_I_List, self.RsiBm]
+        return TankInfo
+
+#전차 객체 생성
+
+#전차                = Exa_Tanks("전차 이름"         ,  분류       , 전차 정보,     주포 정보, 부포 정보, 폭압저항력)
+#WW2_Early_USAm_Tank_List
+M3A1_Stuart          = Tanks("M3A1 스튜어트"     , '[경전차]'  ,          M3A1_I,     weC37mmM6,      None, 2000)
+M4A1_Sherman         = Tanks("M4A1 셔먼"         , '[중형전차]',          M4A1_I,     weC75mmM3,      None, 3000)
+M3_Lee               = Tanks("M3 리"             , '[중전차]'  ,            M3_I,     weC37mmM5, weC75mmM2, 3000)
+M10_GMC              = Tanks("M10 GMC"           , '[구축전차]',           M10_I,     weC76mmM7,      None,  300)
+#WW2_Middle_USAm_Tank_List
+M18_GMC              = Tanks("M18 GMC"           , '[경전차]'  ,           M18_I,     wmC76mmM1,      None,  300)
+M26_Pershing         = Tanks("M26 퍼싱"          , '[중형전차]',           M26_I,   wmC90mmM3_o,      None, 3500)
+M4A3E2_76_W_Jumbo    = Tanks("M4A3E2 점보셔먼"   , '[중전차]'  ,    M4A3E2_76J_I,     wmC76mmM1,      None, 3400)
+M36B2_o              = Tanks("M36B2"             , '[구축전차]',       M38B2_o_I,   wmC90mmM3_s,      None,  500)
+#WW2_Late_USAm_Tank_List
+M41A1_WalkerBulldog_o= Tanks("M41A1 워커불독"    , '[경전차]'  ,       M41A1_o_I,  wlC76mmM32_o,      None, 2000)
+M46_Patton_o         = Tanks("M46 패튼"          , '[중형전차]',         M46_o_I, wlC90mmM3A1_o,      None, 4000)
+T34                  = Tanks("T34"               , '[중전차]'  ,           M34_I,   wlC120mmT53,      None, 4000)
+M56_Scorpion         = Tanks("M56 스콜피온"      , '[구축전차]',           M56_I,    wlC90mmM54,      None,  400)
+#Korean_War_USAm_Tank_List
+M41A1_WalkerBulldog_s= Tanks("M41A1 워커불독"    , '[경전차]'  ,       M41A1_s_I,  kwC76mmM32_s,      None, 2000)
+M46_Patton_s         = Tanks("M46 패튼"          , '[중형전차]',         M46_s_I, kwC90mmM3A1_s,      None, 4000)
+M4A3E8_76_W_HVSS     = Tanks("M4A3E8 이지에잇 셔먼", '[중전차]', M4A3E8_76HVSS_I,   kwC76mmM1A2,      None, 3500)
+M36B2_s              = Tanks("M36B2"             , '[구축전차]',       M38B2_s_I,   kwC90mmM3_t,      None,  500)
+
+#리스트로 묶기
+
+W2E_UT_L = [M3A1_Stuart          , M4A1_Sherman         , M3_Lee               , M10_GMC              ]
+W2M_UT_L = [M18_GMC              , M26_Pershing         , M4A3E2_76_W_Jumbo    , M36B2_o              ]
+W2L_UT_L = [M41A1_WalkerBulldog_o, M46_Patton_o         , T34                  , M56_Scorpion         ]
+KoW_UT_L = [M41A1_WalkerBulldog_s, M46_Patton_s         , M4A3E8_76_W_HVSS     , M36B2_s              ]
+
+UT_L = [W2E_UT_L, W2M_UT_L, W2L_UT_L, KoW_UT_L]
+
+Cntr_L = [UT_L]
+
+#함수 정의
+#순서: 메인메뉴 - 국가 선택 - 시간대 선택 - 전차선택
+#                                           포탄 종류 지정
+def CekSayShlTpe(Tpe):
+    re = []
+    if Tpe == 'AP':
+        re.append('철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'APC':
+        re.append('피모철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'APCBC':
+        re.append('저저항피모철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'APCR':
+        re.append('경심철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'APHE':
+        re.append('철갑유탄')
+        re.append('y')
+        return re
+    if Tpe == 'APHECBC':
+        re.append('저저항피모철갑유탄')
+        re.append('y')
+        return re
+    if Tpe == 'APDS':
+        re.append('분리철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'APFSDS':
+        re.append('날개안정분리철갑탄')
+        re.append('n')
+        return re
+    if Tpe == 'HE':
+        re.append('고폭탄')
+        re.append('y')
+        return re
+    if Tpe == 'HEAT':
+        re.append('대전차고폭탄')
+        re.append('y')
+        return re
+    if Tpe == 'HEATFS':
+        re.append('날개안정대전차고폭탄')
+        re.append('y')
+        return re
+
+#                                           전차 설명
+def ShwGun_Info(STI, MG_I_List, SG_I_List):
+    SayShlTpe = ''
+    print(f'''주포 정보:
+ |주포: {MG_I_List[0]}
+ |재장전 시간: {MG_I_List[1]} 초
+ |사용 가능한 포탄:''')
+    for i in range(2,len(MG_I_List)):
+        SayShlTpe = CekSayShlTpe(MG_I_List[i][1])
+        print(f'''=포탄: {MG_I_List[i][0]} ({MG_I_List[i][1]}, {SayShlTpe[0]})
+  |관통력: {MG_I_List[i][2]}mm''')
+        if SayShlTpe[1] == 'y':
+            print(f'  |작약량: {MG_I_List[i][3]}g')
+        elif SayShlTpe[1] == 'n':
+            print(f'  |피해량: {MG_I_List[i][3]}')
+    if SG_I_List != None:
+        print(f'''부포 정보:
+ |부포: {SG_I_List[0]}
+ |재장전 시간: {SG_I_List[1]} 초
+ |사용 가능한 포탄:''')
+        for i in range(2,len(SG_I_List)):
+            SayShlTpe = CekSayShlTpe(SG_I_List[i][1])
+            print(f'''=포탄: {SG_I_List[i][0]} ({SG_I_List[i][1]}, {SayShlTpe[0]})
+  |관통력: {SG_I_List[i][2]}mm
+  |피해량: {SG_I_List[i][3]}''')
+
+#                                           마지막 선택
+def Slt_Fnl():
+    global SltdCntrIdx, SltdTimeIdx, SltdTankIdx, SltdTank, SltdMapIdx, SltdDfcltIdx, Cntr_L, Cnt, Tim, Tnk, Map, Dfc
+    print("==" * 10)
+    SltdCntr = ''
+    if SltdCntrIdx == 0: SltdCntr = '미국'
+    elif SltdCntrIdx == 1: SltdCntr = '소련(러시아)'
+    elif SltdCntrIdx == 2: SltdCntr = '독일'
+    if SltdTimeIdx == 0: SltdTime = '세계 2차 대전 전기'
+    elif SltdTimeIdx == 1: SltdTime = '세계 2차 대전 중기'
+    elif SltdTimeIdx == 2: SltdTime = '세계 2차 대전 후기'
+    elif SltdTimeIdx == 3: SltdTime = '6.25 전쟁(남한측)'
+    
+    print(f'''선택된 국가: {SltdCntr} | 선택된 시간대(티어): {SltdTimeIdx + 1} ({SltdTime})
+선택된 전차: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].Name} {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].Class}
+|체력(HP): {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[0]}, 속도: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[3]}km/h
+|차체 & 포탑 장갑: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[1]}mm, {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[2]}mm''')
+    ShwGun_Info(SltdTankIdx, Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].MG_I_List, UT_L[SltdTimeIdx][SltdTankIdx].SG_I_List)
+    print(f'''선택된 맵: {MAP_L[SltdMapIdx][0]} (상태:{MAP_L[SltdMapIdx][1]})
+선택된 난이도: {DFC_L[SltdDfcltIdx][0]} (적의 수: {DFC_L[SltdDfcltIdx][1]} | 적의 명중률: {DFC_L[SltdDfcltIdx][2]}% )''')
+    print(f"합계 보상 배율: {TRM * DFC_L[SltdDfcltIdx][3]}")
+    Check = input("시작 하시겠습니까? (Y / N): ")
+    if Check == 'Y' or Check == 'y' or Check == 'YES' or Check == 'Yes' or Check == 'yes':
+        Cnt = SltdCntrIdx
+        Tim = SltdTimeIdx
+        Tnk = SltdTankIdx
+        Map = SltdMapIdx
+        Dfc = SltdDfcltIdx
+        return 'S_B'
+    
+    elif Check == 'N' or Check == 'n' or Check == 'No' or Check == 'no' :
+        print('b')
+        Slt_Dfclt()
+        
+    else:
+        print("#ERROR!#")
+        return Slt_Fnl()
+
+#                                           난이도 선택
+def Slt_Dfclt():
+    global SltdMapIdx, SltdDfcltIdx
+    count = 0
+    CanDfc_List = []
+    print("==" * 10)
+    print("난이도 선택:")
+    print(f'''선택된 맵: {MAP_L[SltdMapIdx][0]} | 상황: {MAP_L[SltdMapIdx][1]}
+선택 가능한 난이도:''')
+    for i in range(MAP_L[SltdMapIdx][3], MAP_L[SltdMapIdx][4]):
+        count += 1
+        CanDfc_List.append(DFC_L[i])
+        print(f"{count}. {DFC_L[i][0]}")
+        print(f"| 적의 수: {DFC_L[i][1]}대 | 적의 명중률: {DFC_L[i][2]}% | 보상 배율: {DFC_L[i][3]}배")
+    Check = int(input("번호를 입력하세요: "))
+    if 1 <= Check <= len(CanDfc_List):
+        for j in range(len(DFC_L)):
+            if DFC_L[j] == CanDfc_List[Check - 1]:
+                SltdDfcltIdx = j
+        return Slt_Fnl()
+    
+    if Check == 0:
+        SltdDfcltIdx = 0
+        Slt_Map()
+    else :
+        print("#ERROR!#")
+        return Slt_Dfclt()
+
+#                                           Map 선택
+def Slt_Map():
+    global SltdTankIdx, SltdTimeIdx, SltdCntrIdx, SltdMapIdx, SltMap_DC
+    SltdTank = Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx]
+    ShwSelInfo = []
+    print("==" * 10)
+    print("맵 선택:")
+    print(f"선택된 전차: {UT_L[SltdTimeIdx][SltdTankIdx].Name} | 티어: {SltdTimeIdx + 1}")
+    print("사용 가능한 탄: ", end = '')
+    for i in range(2, len(SltdTank.MG_I_List)):
+        ShwSelInfo.append(SltdTank.MG_I_List[i][0])
+    for j in range(len(ShwSelInfo)):
+        if j == len(ShwSelInfo) - 1:
+            print(ShwSelInfo[j])
+        else:
+            print(ShwSelInfo[j], end = ", ")
+    if Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].SG_I_List != None:
+        ShwSelInfo = []
+        print("사용 가능한 탄(부포): ", end = '')
+        for i in range(2, len(SltdTank.SG_I_List)):
+            ShwSelInfo.append(SltdTank.SG_I_List[i][0])
+        for j in range(len(ShwSelInfo)):
+            print(ShwSelInfo[j], end = ' ')
+        print(' ')
+    print("맵 목록:")
+    for a in range(len(MAP_L)):
+        print(f"{a + 1}. {MAP_L[a][0]}")
+        print(f"| 상황: {MAP_L[a][1]} | 티어: {MAP_L[a][2] + 1}")
+    print("0. 돌아가기")
+
+    try:
+        Check = int(input("번호를 입력하세요: "))
+    except:
+        print("#ERROR!#")
+        return Slt_Map()
+    if 1 <= Check <= 8:
+        if SltdTimeIdx == MAP_L[Check - 1][2]:
+            SltdMapIdx = Check - 1
+            return Slt_Dfclt()
+        else:
+            if Check == 1 or Check == 2: Check = 0
+            elif Check == 3 or Check == 4: Check = 2
+            elif Check == 5 or Check == 6: Check = 4
+            elif Check == 7 or Check == 8: Check = 6
+            print("!", "####" * 10, "!")
+            print(f'''선택된 전차의 티어(현재 선택된 전차의 티어:{SltdTimeIdx + 1})
+와 같은 티어의 맵(현재 선택된 맵의 티어:{MAP_L[Check][2] + 1})에만 입장할수 있습니다.''')
+            if SltMap_DC > 3: SltMap_DC = 3.99
+            time.sleep(4 - SltMap_DC)
+            SltMap_DC += 1
+            Slt_Map()
+            
+    
+    if Check == 0:
+        SltdMapIdx = 0
+        Slt_T()
+    else :
+        print("#ERROR!#")
+        return Slt_Map()
+
+#                                           USA_TANK 표시
+def Shw_T():
+    global Cntr_L, SltdTankIdx, SltdTimeIdx, SltdCntrIdx
+    print("==" * 10)
+    print("전차 설명:")
+    print(f"이름: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].Name}")
+    print(f"분류: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].Class}")
+    print(f'''체력(HP): {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[0]}
+|차체 장갑: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[1]}mm
+|포탑 장갑: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[2]}mm
+|속도: {Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].HulInfo[3]}km/h
+''', end = '')
+    ShwGun_Info(SltdTankIdx, Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].MG_I_List, Cntr_L[SltdCntrIdx][SltdTimeIdx][SltdTankIdx].SG_I_List)
+    print("1. 시작 | 0. 돌아가기")
+    Check = input("번호를 입력하세요: ")
+    if Check == '1':
+        return Slt_Map()
+    elif Check == '0':
+        SltdTankIdx = 0
+        return Slt_T()
+    else :
+        print("#ERROR!#")
+        return Shw_T()
+
+#                                           WW2_Early_USA_TANK 선택
+def Slt_T():
+    global Cntr_L, SltdTankIdx, SltdTimeIdx
+    SltdTankIdx = 0
+    print("==" * 10)
+    print("전차 선택: ")
+    print(f'''1. {Cntr_L[SltdCntrIdx][SltdTimeIdx][0].Name} {Cntr_L[SltdCntrIdx][SltdTimeIdx][0].Class}
+2. {Cntr_L[SltdCntrIdx][SltdTimeIdx][1].Name} {Cntr_L[SltdCntrIdx][SltdTimeIdx][1].Class}
+3. {Cntr_L[SltdCntrIdx][SltdTimeIdx][2].Name} {Cntr_L[SltdCntrIdx][SltdTimeIdx][2].Class}
+4. {Cntr_L[SltdCntrIdx][SltdTimeIdx][3].Name} {Cntr_L[SltdCntrIdx][SltdTimeIdx][3].Class}
+0. 돌아가기''')
+    Selected_W2E_UTank = input("번호를 입력하세요: ")
+    if Selected_W2E_UTank == '1':
+        SltdTankIdx = 0
+        return Shw_T()
+    elif Selected_W2E_UTank == '2':
+        SltdTankIdx = 1
+        return Shw_T()
+    elif Selected_W2E_UTank == '3':
+        SltdTankIdx = 2
+        return Shw_T()
+    elif Selected_W2E_UTank == '4':
+        SltdTankIdx = 3
+        return Shw_T()
+    elif Selected_W2E_UTank == '0':
+        SltdTankIdx = 0
+        return Slt_Ti()
+    else :
+        print("#ERROR!#")
+        return Slt_T()
+
+#                                           시간대 선택
+def Slt_Ti():
+    global Exd_SlTi, Exd_SlCn, SltdTimeIdx
+    SltdTimeIdx = 0
+    if Exd_SlTi == 0:
+        print("==" * 10)
+        print("시간 선택: ")
+        print('''1. 세계 2차 대전 전기
+2. 세계 2차 대전 중기
+3. 세계 2차 대전 후기
+4. 6.25 전쟁(남한측)
+0. 돌아가기''')
+    Selected_Time = input("번호를 입력하세요: ")
+    if Selected_Time == '1':
+        SltdTimeIdx = 0
+        Exd_SlTi = 0
+        return 'S_T'
+    elif Selected_Time == '2':
+        SltdTimeIdx = 1
+        Exd_SlTi = 0
+        return 'S_T'
+    elif Selected_Time == '3':
+        SltdTimeIdx = 2
+        Exd_SlTi = 0
+        return 'S_T'
+    elif Selected_Time == '4':
+        SltdTimeIdx = 3
+        Exd_SlTi = 0
+        return 'S_T'
+    elif Selected_Time == '0':
+        SltdTimeIdx = 0
+        Exd_SlTi = 0
+        return 'S_C'
+    else :
+        Exd_SlTi = 1
+        print("#ERROR!#")
+        return 'S_Ti'
+
+#                                           국가 선택
+def Slt_Cnt():
+    global Exd_SlCn, Exd_MaMe, SltdCntrIdx
+    SltdCntrIdx = 0
+    if Exd_SlCn == 0:
+        print("==" * 10)
+        print("국가 선택: ")
+        print('''1. 미국 | #2. 소련(러시아)[개발중] | 3. 독일[개발중]#
+0. 돌아가기''')
+    Selected_Country = input("번호를 입력하세요: ")
+    if Selected_Country == '1':
+        SltdCntrIdx = 0
+        Exd_SlCn = 0
+        return Slt_Ti()
+#    elif Selected_Country == '2':
+        SltdCntrIdx = 1
+        Exd_SlCn = 0
+        return Slt_Ti()
+#    elif Selected_Country == '3':
+        SltdCntrIdx = 2
+        Exd_SlCn = 0
+        return Slt_Ti()
+    elif Selected_Country == '0':
+        SltdCntrIdx = 0
+        Exd_SlCn = 0
+        Exd_MaMe = 0
+        return "M_M"
+    else :
+        Exd_SlCn = 1
+        print("#ERROR!#")
+        return 'S_C'
+
+#                                           메인 메뉴
+def Main_Menu():
+    global Exd_MaMe
+    if Exd_MaMe == 0:
+        print("==" * 10)
+        print("TankCombat alpha-test ver.3")
+        print("1 을 입력하여 플레이")
+    start = input("번호를 입력하세요: ")
+    if start == '1':
+        return 'S_C'
+    else :
+        Exd_MaMe = 1
+        print("#ERROR!#")
+        return "M_M"
+
+screens = {
+    'M_M': Main_Menu,
+    'S_C': Slt_Cnt,
+    'S_Ti': Slt_Ti,
+    'S_T': Slt_T,
+    'Shw_T': Shw_T,
+    'Slt_Map': Slt_Map,
+    'Slt_Dfclt': Slt_Dfclt,
+    'Slt_Fnl': Slt_Fnl,
+    'S_B': None
+
+}
+
+current_screen = 'M_M' #이 함수호출을 주석처리 할 경우 TUI를 건너뛰고 윈도우 창 전투로 스킵됩니다.(전차는 M3A1 스튜어트로 지정됨)
+#실행 루프
+while True:
+    current_screen = screens[current_screen]()
+    if screens[current_screen] == None or screens[current_screen] == 'S_B':
+        break
+
+pygame.init()
+Wid_W = 1600
+Wid_H = 800
+pygame.display.set_caption('TC_a-tv.3')
+
+#         R    G    B
+Wte    = (255, 255, 255)
+Ppl    = (255,   0, 225)
+Grn    = (102, 204,   0)
+Ylw    = (255, 255,   0)
+Lbl    = (170, 190, 255)
+Blu    = (  0,   0, 255)
+Red    = (255,   0,   0)
+Blc    = (  0,   0,   0)
+Brw    = ( 85,  65,   0)
+
+Dsp = pygame.display.set_mode((Wid_W, Wid_H))
+Dsp.fill(Wte)
+x = int(Wid_W / 2)
+y = int(Wid_H / 2)
+font = pygame.font.Font("C:/Windows/Fonts/malgun.ttf", 27)
+amm = []
+sam = ''
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+Rdd_APs = 0
+Rdd_HEs = 0
+
+RdRc = 0
+
+fps = pygame.time.Clock()
+Fls = False
+Fls_s = 0
+Fls_d = 100
+Fls_cd = int(Cntr_L[Cnt][Tim][Tnk].MG_I_List[1] * 1000)
+LFT = - Fls_cd
+
+Srd = 1
+#Srd_s = 0
+#Srd_d = 100
+#Srd_cd = int(Cntr_L[Cnt][Tim][Tnk].MG_I_List[1] * 1000)
+#LRT = - Srd_cd
+
+# VLs 폴더 다운로드 필요. [위치]/VLs/[국가] 폴더의 위치를 적은 후 주석을 지우십시오. 예: "C:/VLs/USA"
+#try:
+VL_USA = "F:/코딩/C_MyWorks/Sz_TankCombat/TankCombat_alpha/TankCombat_alpha-test_ver_F3/FVLs/USA"
+VL_USAs = []
+for file in os.listdir(VL_USA):
+    if file.endswith(".mp3"):
+        VL_USAs.append(os.path.join(VL_USA, file))
+VL_USAs.sort()
+sr = random.randrange(0, 2)
+pygame.mixer.music.load(VL_USAs[sr])
+pygame.mixer.music.play()
+pygame.display.update()
+for a in range(2, len(Cntr_L[Cnt][Tim][Tnk].MG_I_List)):
+    amm.append(Cntr_L[Cnt][Tim][Tnk].MG_I_List[a][1])
+
+while True:
+    pygame.display.flip()
+    now = pygame.time.get_ticks()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            terminate()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                sam = amm[0]
+                print(amm)
+                if amm[0] == "AP":
+                    amm[0] += "(철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "APC":
+                     amm[0] += "(피모철갑탄)"
+                     if Rdd_APs != 1:
+                         pygame.mixer.music.load(VL_USAs[2])
+                         pygame.mixer.music.play()
+                         Rdd_APs = 1
+                     Rdd_HEs = 0
+                if amm[0] == "APCBC":
+                    amm[0] += "(저저항피모철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "APCR":
+                    amm[0] += "(경심철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "APHE":
+                    amm[0] += "(철갑유탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "APHECBC":
+                    amm[0] += "(저저항피모철갑유탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0        
+                if amm[0] == "APDS":
+                    amm[0] += "(분리철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "APFSDS":
+                    amm[0] += "(날개안정분리철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[0] == "HE":
+                    amm[0] += "(고폭탄)"
+                    if Rdd_HEs != 1:                   
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_HEs = 1
+                    Rdd_APs = 0
+                if amm[0] == "HEAT":
+                    amm[0] += "(대전차고폭탄)"
+                    if Rdd_HEs != 1:                   
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_HEs = 1
+                    Rdd_APs = 0
+                if amm[0] == "HEATFS":
+                    amm[0] += "(날개안정대전차고폭탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                    
+            if event.key == pygame.K_2:
+                print(amm)
+                if amm[1] == "AP":
+                    amm[1] += "(철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "APC":
+                     amm[1] += "(피모철갑탄)"
+                     if Rdd_APs != 1:
+                         pygame.mixer.music.load(VL_USAs[2])
+                         pygame.mixer.music.play()
+                         Rdd_APs = 1
+                     Rdd_HEs = 0
+                if amm[1] == "APCBC":
+                    amm[1] += "(저저항피모철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "APCR":
+                    amm[1] += "(경심철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "APHE":
+                    amm[1] += "(철갑유탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "APHECBC":
+                    amm[1] += "(저저항피모철갑유탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[2])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0        
+                if amm[1] == "APDS":
+                    amm[1] += "(분리철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "APFSDS":
+                    amm[1] += "(날개안정분리철갑탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[3])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+                if amm[1] == "HE":
+                    amm[1] += "(고폭탄)"
+                    if Rdd_HEs != 1:                   
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_HEs = 1
+                    Rdd_APs = 0
+                if amm[1] == "HEAT":
+                    amm[1] += "(대전차고폭탄)"
+                    if Rdd_HEs != 1:                   
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_HEs = 1
+                    Rdd_APs = 0
+                if amm[1] == "HEATFS":
+                    amm[1] += "(날개안정대전차고폭탄)"
+                    if Rdd_APs != 1:
+                        pygame.mixer.music.load(VL_USAs[4])
+                        pygame.mixer.music.play()
+                        Rdd_APs = 1
+                    Rdd_HEs = 0
+            if event.key == pygame.K_3:
+                amm = "HE(고폭탄)"
+                if Rdd_HEs != 1:                   
+                    pygame.mixer.music.load(VL_USAs[4])
+                    pygame.mixer.music.play()
+                    Rdd_HEs = 1
+                Rdd_APs = 0
+                
+            if event.key == pygame.K_SPACE:
+                if now - LFT >= Fls_cd:
+                    Fls = True
+                    Fls_s = now
+                    LFT = now
+
+     
+    if Fls:
+        now = pygame.time.get_ticks()
+        if now - Fls_s < Fls_d:
+            pygame.draw.circle(Dsp, Ylw, (x, y), 400)
+            if Cntr_L[Cnt][Tim][Tnk].MG_I_List[0][0] == "3":
+                fr = random.randrange(5,7)
+                pygame.mixer.music.load(VL_USAs[fr])
+                pygame.mixer.music.play()
+            elif Cntr_L[Cnt][Tim][Tnk].MG_I_List[0][0] == "7":
+                fr = random.randrange(7,9)
+                pygame.mixer.music.load(VL_USAs[fr])
+                pygame.mixer.music.play()
+        else:
+            Fls = False
+            
+    if now - LFT < Fls_cd:
+        rc = Red
+    else:
+        rc = Grn
+
+    pygame.draw.circle(Dsp, rc, (x + 25, y -125), 15)
+
+    pygame.display.flip()
+    fps.tick(60)
+                    
+    text_surf = font.render(sam, True, Blc)
+    pygame.draw.circle(Dsp, Wte, (x, y), 400, 0)            #조준경구멍
+
+    pygame.draw.rect(Dsp, Grn, (x - 500, 450, 1000, 400))   #배경
+    pygame.draw.rect(Dsp, Lbl, (x - 500,   0, 1000, 450))
+
+    pygame.draw.line(Dsp, Blc, (0, y), (Wid_W, y), 4)       #조준경
+    pygame.draw.line(Dsp, Blc, (x, 0), (x, Wid_H), 4)
+
+    mask = pygame.Surface((Wid_W, Wid_H), pygame.SRCALPHA)
+    mask.fill((0, 0, 0, 255))
+    pygame.draw.circle(mask, (0, 0, 0, 0), (Wid_W//2, Wid_H//2), 400)
+    Dsp.blit(mask, (0, 0))
+
+    pygame.draw.rect(Dsp, Blc, (x, 300, 350, 50))           #탄종박스
+    
+#    text_surf = font.render(amm, True, Wte)
+#    Dsp.blit(text_surf, (x, 300))
