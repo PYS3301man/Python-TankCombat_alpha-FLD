@@ -507,7 +507,7 @@ Srd = 1
 
 # VLs 폴더 다운로드 필요. [위치]/VLs/[국가] 폴더의 위치를 적은 후 주석을 지우십시오. 예: "C:/VLs/USA"
 #try:
-VL_USA = "F:/코딩/C_MyWorks/Sz_TankCombat/TankCombat_alpha/TankCombat_alpha-test_ver_F3/FVLs/USA"
+VL_USA = ""
 VL_USAs = []
 for file in os.listdir(VL_USA):
     if file.endswith(".mp3"):
